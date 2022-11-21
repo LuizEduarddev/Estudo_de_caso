@@ -25,7 +25,6 @@ int main(int argc, char *argv[])
     }
     inserir_arquivo(arquivo, cabeca);
     arruma_arquivo(cabeca, arquivo_pronto);
-    inserir_arquivo_pronto(cabeca, arquivo_pronto);
     deleta_lista(cabeca);
     // erro = verifica_nomes(arquivo_pronto);
     // if (erro == -1)

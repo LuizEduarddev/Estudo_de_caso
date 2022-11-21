@@ -14,5 +14,6 @@ void deleta_lista(gancho *cabeca);
 int verifica_nomes(FILE *arquivo_pronto);
 int so_espaco(no *aux);
 void remove_espaco(no *aux);
-void inserir_arquivo_pronto(gancho *cabeca, FILE *arquivo_pronto);
+void tem_hashtag(no *aux);
+no *final(gancho *cabeca);
 #endif

@@ -38,6 +38,18 @@ void inserir_lista(gancho *cabeca, char *str)
     cabeca->primeiro = novo;
 }
 
+no *final(gancho *cabeca)
+{
+    no *atual = cabeca->primeiro;
+    no *aux = NULL;
+    while (atual != NULL)
+    {
+        aux = atual;
+        atual = atual->proximo;
+    }
+    return aux;
+}
+
 int eh_nulo(FILE *arquivo, FILE *arquivo_pronto, FILE *erro_log)
 {
     if (arquivo == NULL || arquivo_pronto == NULL || erro_log == NULL)
@@ -73,46 +85,49 @@ void inserir_arquivo(FILE *arquivo, gancho *cabeca)
 
 void arruma_arquivo(gancho *cabeca, FILE *arquivo_pronto)
 {
-    no *atual = cabeca->primeiro;
-    no *aux = NULL;
+    no *aux = final(cabeca);
     int espaco = 0;
-    while (atual != NULL)
-    {
-        aux = atual;
-        atual = atual->proximo;
-    }
     while (aux != NULL)
     {
-        for (int i=0; aux->linha[i] != '\0'; i++)
+        if((espaco = so_espaco(aux)) == -1)
         {
-            if (aux->linha[0] == ' ')
+            aux = aux->anterior;
+        }
+        else
+        {
+            remove_espaco(aux);
+            if (aux->linha[0] == '\n' || aux->linha[0] == '#')
             {
-                espaco = so_espaco(aux);
-                if (espaco == 0)
-                {
-                    remove_espaco(aux);
-                    fprintf(arquivo_pronto, aux->linha);
-                }
-                else
-                {
-                    aux = aux->anterior;
-                }
-            }
-            else if (aux->linha[0] == '\n')
                 aux = aux->anterior;
-            else if (aux->linha[i] == '#')
+            }
+            else
             {
-                aux->linha[i] = '\0';
-                if (aux->linha[i] == '\0')
-                {    
-                    if (aux->linha[i - 1] == ' ')
-                        aux->linha[i - 1] = '\0'; 
-                }   
-                i -= 1;
+                tem_hashtag(aux);
+                fprintf(arquivo_pronto, aux->linha);  
+                aux = aux->anterior;
             }
         }
-        fprintf(arquivo_pronto, aux->linha);
-        aux = aux->anterior;
+    }
+}
+
+void tem_hashtag(no *aux)
+{
+    for (int i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] == '#')
+        {
+            if (aux->linha[i-1] == ' ')
+            {
+                aux->linha[i] = '\0';
+                aux->linha[i - 1] = '\n'; 
+                i -= 1;
+            } 
+            else
+            {
+                aux->linha[i] = '\n';
+                aux->linha[i + 1] = '\0';
+            }
+        } 
     }
 }
 
@@ -176,11 +191,6 @@ void deleta_lista(gancho *cabeca)
     }
 }
 
-void inserir_arquivo_pronto(gancho *cabeca, FILE *arquivo_pronto)
-{
-
-}
-
 // int verifica_nomes(FILE *arquivo_pronto)
 // {
 //     int i = 0;
@@ -229,5 +239,6 @@ void inserir_arquivo_pronto(gancho *cabeca, FILE *arquivo_pronto)
 //         return -1;
 //     }
 // }
+
 
 
