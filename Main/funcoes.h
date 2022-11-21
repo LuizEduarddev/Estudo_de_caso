@@ -13,4 +13,11 @@ void remove_enter(char *str);
 int verifica_args(char *nome_func, int linha);
 void arquivo_log(int linha, int j, char *funcao, char erro, int retorno);
 void apaga_lista(gancho *cabeca);
+int funcao_read(char *nome_func, char *funcao, int linha);
+int funcao_storeconst(char *nome_func, char *funcao, int linha);
+int funcao_store(char *nome_func, char *funcao, int linha);
+int funcao_write(char *nome_func, char *funcao, int linha);
+int funcao_jump(char *nome_func, char *funcao, int linha);
+int funcao_add(char *nome_func, char *funcao, int linha);
+int funcao_sub(char *nome_func, char *funcao, int linha);
 #endif
