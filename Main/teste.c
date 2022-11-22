@@ -8,8 +8,7 @@
 
 struct no
 {
-    int linha;
-    char funcao[20];   
+    char linha[BUFFER];   
     no *proximo;
     no *anterior;
 };
@@ -24,12 +23,12 @@ gancho* criar_lista(void)
     gancho *cabeca = (gancho *)(malloc(sizeof(gancho)));
     cabeca->primeiro = NULL;
     return cabeca;
-
 }
-int Inserir_lista(gancho *cabeca, char *vet, int linha)
+
+void inserir_lista(gancho *cabeca, char *str)
 {
     no* novo = (no *)(malloc(sizeof(no)));
-    strcpy(novo->funcao, vet);
+    strcpy(novo->linha, str);
     novo->proximo = cabeca->primeiro;
     novo->anterior = NULL;
     if (cabeca->primeiro != NULL)
@@ -37,28 +36,220 @@ int Inserir_lista(gancho *cabeca, char *vet, int linha)
         cabeca->primeiro->anterior = novo;
     }
     cabeca->primeiro = novo;
-    linha++;
-    return linha;
 }
 
-void arruma_arquivo(FILE *arquivo, FILE *arq_pronto)
+no *final(gancho *cabeca)
 {
-    char linha[BUFFER];
+    no *atual = cabeca->primeiro;
+    no *aux = NULL;
+    while (atual != NULL)
+    {
+        aux = atual;
+        atual = atual->proximo;
+    }
+    return aux;
+}
 
+int eh_nulo(FILE *arquivo, FILE *arquivo_pronto, FILE *erro_log)
+{
+    if (arquivo == NULL || arquivo_pronto == NULL || erro_log == NULL)
+    {
+        if (arquivo == NULL)
+        {
+            printf("Houve um erro ao abrir o arquivo principal.\n");
+        }
+        if (arquivo_pronto == NULL)
+        {
+            printf("Houve um erro ao abrir o arquivo organizado.\n");
+        }
+        if (erro_log == NULL)
+        {
+            printf("Houve um erro ao abrir o arquivo de erro.\n");
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+void inserir_arquivo(FILE *arquivo, gancho *cabeca)
+{
+    char str[BUFFER];
     while (!feof(arquivo))
     {
-        fgets(linha, BUFFER, arquivo);
-        for (int i=0; linha[i] != '\0'; i++)
+        fgets(str, BUFFER, arquivo);
+        inserir_lista(cabeca, str);
+    }
+}
+
+void inserir_arquivo_pronto(FILE *arquivo_pronto, gancho *cabeca)
+{
+    char str[BUFFER];
+    while (!feof(arquivo_pronto))
+    {
+        fgets(str, BUFFER, arquivo_pronto);
+        inserir_lista(cabeca, str);
+    }
+}
+
+void arruma_arquivo(gancho *cabeca, FILE *arquivo_pronto)
+{
+    no *aux = final(cabeca);
+    int espaco = 0;
+    while (aux != NULL)
+    {
+        if((espaco = so_espaco(aux)) == -1)
         {
-            if (linha[0] == '\n')
+            aux = aux->anterior;
+        }
+        else
+        {
+            remove_espaco(aux);
+            if (aux->linha[0] == '\n' || aux->linha[0] == '#')
+            {
+                aux = aux->anterior;
+            }
+            else
+            {
+                tem_hashtag(aux);
+                fprintf(arquivo_pronto, aux->linha);  
+                aux = aux->anterior;
+            }
+        }
+    }
+}
+
+void tem_hashtag(no *aux)
+{
+    for (int i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] == '#')
+        {
+            if (aux->linha[i-1] == ' ')
+            {
+                aux->linha[i] = '\0';
+                aux->linha[i - 1] = '\n'; 
+                i -= 1;
+            } 
+            else
+            {
+                aux->linha[i] = '\n';
+                aux->linha[i + 1] = '\0';
+            }
+        } 
+    }
+}
+
+int so_espaco(no *aux)
+{
+    for(int i=0; aux->linha[i] != '\0' ; i++)
+    {
+        if (!isdigit(aux->linha[i]))
+        {
+            if (aux->linha[i] == ' ')
             {
                 continue;
             }
-            if (linha[i] == '#')
+            else if (aux->linha[i] != '\n')
             {
-                linha[i] == '\0';
+                return 0;
             }
         }
-        fprintf(arq_pronto, linha);
+        if (isdigit(aux->linha[i]))
+        {
+            return 0;
+        }
     }
+    return -1;
 }
+
+void remove_espaco(no *aux)
+{
+    char str[50];
+    int inicio = 0;
+    int j=0;
+    int tamanho;
+    for (int i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] != ' ')
+        {
+            inicio = i;
+            break;
+        }
+    }
+    for (int i = inicio; aux->linha[i] != '\0'; i++)
+    {
+        str[j] = aux->linha[i];
+        j++;   
+    }
+    str[j] = '\0';
+    strcpy(aux->linha, str);
+    return;
+}
+
+void deleta_lista(gancho *cabeca)
+{
+    no *aux = NULL;
+    no *atual = cabeca->primeiro;
+
+    while (atual != NULL)
+    {
+        aux = atual->proximo;
+        free(atual);
+        atual = aux;
+    }
+    cabeca->primeiro = NULL;
+}
+
+int verifica_nomes(gancho *cabeca, FILE *erro_log)
+{
+    int i=0;
+    no *atual = cabeca->primeiro;
+    char funcao[20];
+    while(atual != NULL)
+    {
+        for (i=0; atual->linha[i] != ' '; i++);
+        strncpy(funcao, atual->linha, i);
+        funcao[i] = '\0';
+    
+        if (strcmp(funcao, "read")==0)
+        { 
+            return 0; 
+        }
+        if (strcmp(funcao, "storeconst")==0)
+        {
+            return 0;
+        }
+        if (strcmp(funcao, "add")==0)
+        {
+            return 0;
+        }
+        if (strcmp(funcao, "store")==0)
+        {
+            return 0;
+        }
+        if(strcmp(funcao, "sub")==0)
+        {
+            return 0;
+        }
+        if(strcmp(funcao, "write")==0)
+        {
+            return 0;
+        }
+        if(strcmp(funcao, "jump")==0)
+        {
+            return 0;   
+        }
+        if(strcmp(funcao, "div")==0)
+        {
+            return 0;   
+        }
+    }
+    printf("Erro, abra o arquivo log para verificar.\n");
+    fprintf(erro_log, "'%s' nao e reconhecido como um comando interno.\n", funcao);
+    return -1;
+}
+
+
+

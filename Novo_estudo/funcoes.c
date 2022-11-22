@@ -83,29 +83,26 @@ void inserir_arquivo(FILE *arquivo, gancho *cabeca)
     }
 }
 
-void arruma_arquivo(gancho *cabeca, FILE *arquivo_pronto)
+void arruma_arquivo(gancho *cabeca)
 {
     no *aux = final(cabeca);
-    int espaco = 0;
+    no *auxiliar = NULL;
     while (aux != NULL)
     {
-        if((espaco = so_espaco(aux)) == -1)
+        so_espaco(aux); 
+        remove_espaco(aux);
+        if (aux->linha[0] == '\n' || aux->linha[0] == '#')
         {
-            aux = aux->anterior;
+            auxiliar = aux->anterior;
+            aux->anterior->proximo = aux->proximo;
+            aux->proximo->anterior = aux->anterior;
+            free(aux);
+            aux = auxiliar;
         }
         else
         {
-            remove_espaco(aux);
-            if (aux->linha[0] == '\n' || aux->linha[0] == '#')
-            {
-                aux = aux->anterior;
-            }
-            else
-            {
-                tem_hashtag(aux);
-                fprintf(arquivo_pronto, aux->linha);  
-                aux = aux->anterior;
-            }
+            tem_hashtag(aux);
+            aux = aux->anterior;
         }
     }
 }
@@ -131,27 +128,39 @@ void tem_hashtag(no *aux)
     }
 }
 
-int so_espaco(no *aux)
+void so_espaco(no *atual)
 {
-    for(int i=0; aux->linha[i] != '\0' ; i++)
+    no *aux = NULL;
+    for(int i=0; atual->linha[i] != '\0' ; i++)
     {
-        if (!isdigit(aux->linha[i]))
+        if (!isdigit(atual->linha[i]))
         {
-            if (aux->linha[i] == ' ')
+            if (atual->linha[i] == ' ')
             {
                 continue;
             }
-            else if (aux->linha[i] != '\n')
+            else if (atual->linha[i] != '\n')
             {
-                return 0;
+                return;
             }
         }
-        if (isdigit(aux->linha[i]))
+        if (isdigit(atual->linha[i]))
         {
-            return 0;
+            return;
         }
     }
-    return -1;
+    aux = atual->anterior;
+    atual->proximo->anterior = atual->anterior;
+    free(atual);
+    atual = aux;
+
+
+    aux = atual->anterior;
+    atual->anterior->proximo = atual->proximo;
+    atual->proximo->anterior = atual->anterior;
+    free(atual);
+    atual = aux;
+
 }
 
 void remove_espaco(no *aux)
@@ -189,56 +198,74 @@ void deleta_lista(gancho *cabeca)
         free(atual);
         atual = aux;
     }
+    cabeca->primeiro = NULL;
 }
 
-// int verifica_nomes(FILE *arquivo_pronto)
-// {
-//     int i = 0;
-//     char funcao[20];
-//     for (i=0; [i] != ' '; i++);
-//         strncpy(funcao, nome_func, i);
-//     funcao[i] = '\0';
-    
-//     while(1)
-//     {
-//         if (strcmp(funcao, "read")==0)
-//         { 
-//             return 0; 
-//         }
-//         if (strcmp(funcao, "storeconst")==0)
-//         {
-//             return 0;
-//         }
-//         if (strcmp(funcao, "add")==0)
-//         {
-//             return 0;
-//         }
-//         if (strcmp(funcao, "store")==0)
-//         {
-//             return 0;
-//         }
-//         if(strcmp(funcao, "sub")==0)
-//         {
-//             return 0;
-//         }
-//         if(strcmp(funcao, "write")==0)
-//         {
-//             return 0;
-//         }
-//         if(strcmp(funcao, "jump")==0)
-//         {
-//             return 0;   
-//         }
-//         for (i=0; nome_func[i] != '\0'; i++)
-//         {
-//             if (isdigit(nome_func[i]))
-//             {
-//                 return -1;
-//             }
-//         }
-//         return -1;
-//     }
-// }
+int retorna_nome(char *funcao)
+{
+    if (strcmp(funcao, "read")==0)
+    { 
+        return 0; 
+    }
+    if (strcmp(funcao, "storeconst")==0)
+    {
+        return 0;
+    }
+    if (strcmp(funcao, "add")==0)
+    {
+        return 0;
+    }
+    if (strcmp(funcao, "store")==0)
+    {
+        return 0;
+    }
+    if(strcmp(funcao, "sub")==0)
+    {
+        return 0;
+    }
+    if(strcmp(funcao, "write")==0)
+    {
+        return 0;
+    }
+    if(strcmp(funcao, "jump")==0)
+    {
+        return 0;   
+    }
+    if(strcmp(funcao, "div")==0)
+    {
+        return 0;   
+    }
+}
+
+void remove_enter(char *str)
+{
+    for (int i=0; str[i] != '\0')
+}
+
+int verifica_nomes(gancho *cabeca, FILE *erro_log)
+{
+    int i=0, erro = 0, coluna = 1;
+    no *aux = final(cabeca);
+    char funcao[20];
+    while(aux != NULL)
+    {
+        for (i=0; aux->linha[i] != ' '; i++);
+        strncpy(funcao, aux->linha, i);
+        funcao[i] = '\0';
+        if ((erro = retorna_nome(funcao)) != 0)
+        {
+            remove_enter(funcao);
+            printf("Erro, abra o arquivo log para verificar.\n");
+            fprintf(erro_log, "'%s' nao e reconhecido como um comando interno na coluna '%d'.\n", funcao, coluna);
+            return -1; 
+        }
+        else
+        {
+            aux = aux->anterior; 
+        }
+        coluna++;
+    }    
+}
 
 
 
