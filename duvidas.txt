@@ -1,0 +1,5 @@
+uma das minhas duvidas eh que na funcao para organizar as funcoes, o aux->anterior na parte em que se retira
+o espaco nao esta se comportando da mesma forma que quando retira o \n
+
+
+tentar diminuir a funcao de arrumar as funcoes do arquivo.

@@ -1,0 +1,4 @@
+#bug
+ #nao vai dar certo
+ read 10
+ 
