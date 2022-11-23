@@ -107,7 +107,7 @@ no *remove_item(no *aux, gancho *cabeca)
     {
         auxiliar = aux->anterior;
         aux->anterior->proximo = aux->proximo;
-        aux->proximo = NULL;
+        aux->proximo->anterior = aux->anterior;
         free(aux);
         aux = auxiliar;
         return aux;
@@ -121,7 +121,10 @@ void arruma_arquivo(gancho *cabeca)
     while (aux != NULL)
     {
         aux = so_espaco(aux, cabeca); 
-        remove_espaco(aux);
+        if (aux->linha[0] == ' ')
+        {
+            remove_espaco(aux);
+        }
         if (aux->linha[0] == '\n' || aux->linha[0] == '#')
         {
             aux = remove_item(aux, cabeca);
@@ -161,9 +164,10 @@ int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log)
             erro = storeconst(aux, arquivo, erro_log);
             if (erro == -1)
                 return -1;
-        
+        }
         aux = aux->anterior;
     }
+    fprintf(erro_log, "Nenhum erro para ser mostrado no momento.\n");
 }
 
 int um_paramentro(no *aux, FILE *arquivo, FILE *erro_log)
@@ -176,7 +180,7 @@ int um_paramentro(no *aux, FILE *arquivo, FILE *erro_log)
         {
             if ((espaco = args_espaco(aux, i)) == 0)
             {
-                for (j = i+1; aux->linha[j] != ' '; i++)
+                for (j = i+1; aux->linha[j] != ' '; j++)
                 {
                     if (!isdigit(aux->linha[j]))
                     {

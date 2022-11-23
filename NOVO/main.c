@@ -11,14 +11,13 @@ int main(int argc, char *argv[])
     gancho *cabeca = criar_lista();
     FILE *arquivo;
     FILE *erro_log;
-    FILE *arquivo_pronto;
     int nulo = 0, erro = 0;
 
     arquivo = fopen(argv[1], "r");
     erro_log = fopen(argv[2], "w");
     
     
-    nulo = eh_nulo(arquivo, arquivo_pronto, erro_log);
+    nulo = eh_nulo(arquivo, erro_log);
     if (nulo == -1)
         return -1;
     
@@ -26,4 +25,8 @@ int main(int argc, char *argv[])
     arruma_arquivo(cabeca);
     if ((erro = verifica_nomes(cabeca, erro_log)) == -1)
         return -1;
+    if ((erro = verifica_args(cabeca, arquivo, erro_log)) == -1)
+        return -1;
+
+    return 0;   
 }
