@@ -10,51 +10,23 @@ int main(int argc, char *argv[])
 {
     gancho *cabeca = criar_lista();
     FILE *arquivo;
-    FILE *log;
-    char nome_func[BUFFER];
-    int verifica = 0, linha = 1;
-    arquivo = fopen("C:\\Users\\dudud\\OneDrive\\Documentos\\Faculdade\\Estrutura de Dados\\Estudo de caso\\arquivo.txt", "r");
-    log = fopen("erros.log", "w");
-    if (arquivo == NULL || log == NULL)
-    {
-        printf("Parece que houve um erro ao abrir o arquivo, por favor tente novamente.\n");
-        return -1;
-    }
+    FILE *erro_log;
+    int nulo = 0, erro = 0;
+
+    arquivo = fopen(argv[1], "r");
+    erro_log = fopen(argv[2], "w");
     
-    while (!feof(arquivo))
-    {
-        fflush(stdin);
-        fgets(nome_func, BUFFER, arquivo);
-        verifica = verifica_func(nome_func);
-        if (verifica == 1)
-        {
-            printf("O que foi digitado foi um numero, quando na verdade deveria ser uma string para uma funcao.\nNumero digitado - %s, na linha %d", nome_func, linha);
-            return 1;
-        }
-        if (verifica == -1)
-        {
-            printf("A funcao digitada esta incorreta na linha %d.\nFuncao digitada - %s\n", nome_func, linha);
-            return -1;
-        }
-        while (verifica == 10)
-        {
-            fgets(nome_func, BUFFER, arquivo);
-            verifica = verifica_func(nome_func);
-        }
-        verifica = verifica_args(nome_func, linha);
-        if (verifica == -1)
-        {
-            printf("O arquivo retornou um erro.\n");
-            return -1;
-        }
-        if (verifica == 2)
-        {
-            printf("O arquivo retornou um erro.\n");
-            return 2;
-        }
-        linha = Inserir_lista(cabeca, nome_func, linha);
-    }
-    apaga_lista(cabeca);
-    fprintf(log, "Sem erros para serem mostrados no momento.\n");
-    printf("O arquivo nao retornou erros.\n");
+    
+    nulo = eh_nulo(arquivo, erro_log);
+    if (nulo == -1)
+        return -1;
+    
+    inserir_arquivo(arquivo, cabeca);
+    arruma_arquivo(cabeca);
+    if ((erro = verifica_nomes(cabeca, erro_log)) == -1)
+        return -1;
+    if ((erro = verifica_args(cabeca, arquivo, erro_log) == -1))
+        return -1;
+
+    return 0;   
 }

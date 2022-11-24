@@ -4,10 +4,12 @@
 #include<conio.h>
 #include<ctype.h>
 #include "funcoes.h"
+#define BUFFER 100
+
 struct no
 {
-    int linha;
-    char funcao[20];   
+    int coluna;
+    char linha[BUFFER];   
     no *proximo;
     no *anterior;
 };
@@ -22,12 +24,13 @@ gancho* criar_lista(void)
     gancho *cabeca = (gancho *)(malloc(sizeof(gancho)));
     cabeca->primeiro = NULL;
     return cabeca;
-
 }
-int Inserir_lista(gancho *cabeca, char *vet, int linha)
+
+void inserir_lista(gancho *cabeca, char *str, int col)
 {
     no* novo = (no *)(malloc(sizeof(no)));
-    strcpy(novo->funcao, vet);
+    novo->coluna = col;
+    strcpy(novo->linha, str);
     novo->proximo = cabeca->primeiro;
     novo->anterior = NULL;
     if (cabeca->primeiro != NULL)
@@ -35,86 +38,541 @@ int Inserir_lista(gancho *cabeca, char *vet, int linha)
         cabeca->primeiro->anterior = novo;
     }
     cabeca->primeiro = novo;
-    linha++;
-    return linha;
 }
-void printar_lista(gancho *cabeca)
+
+no *final(gancho *cabeca)
 {
     no *atual = cabeca->primeiro;
-    no *auxiliar = NULL;
-    if (atual == NULL)
+    no *aux = NULL;
+    while (atual != NULL)
     {
-        printf("Nao a elementos na lista.\n");
-        return;
-    }
-    while (1)
-    {
-        auxiliar = atual;
+        aux = atual;
         atual = atual->proximo;
-        if (atual == NULL)
+    }
+    return aux;
+}
+
+int eh_nulo(FILE *arquivo, FILE *erro_log)
+{
+    if (arquivo == NULL ||  erro_log == NULL)
+    {
+        if (arquivo == NULL)
         {
-            while (auxiliar != NULL)
-            {
-                printf("%s", auxiliar->funcao);
-                auxiliar = auxiliar->anterior;
-            }
-            return;
+            printf("Houve um erro ao abrir o arquivo principal.\n");
+        }
+        if (erro_log == NULL)
+        {
+            printf("Houve um erro ao abrir o arquivo de erro.\n");
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+void inserir_arquivo(FILE *arquivo, gancho *cabeca)
+{
+    char str[BUFFER];
+    int coluna = 1;
+    while (!feof(arquivo))
+    {
+        fgets(str, BUFFER, arquivo);
+        inserir_lista(cabeca, str, coluna);
+        coluna++;
+    }
+}
+
+no *remove_item(no *aux, gancho *cabeca)
+{
+    no *auxiliar = NULL;
+    if (aux->proximo == NULL)
+    {
+        auxiliar = aux->anterior;
+        aux->anterior->proximo = aux->proximo;
+        aux->proximo = NULL;
+        free(aux);
+        aux = auxiliar;
+        return aux;
+    }  
+    else if (aux->anterior == NULL)
+    {
+        auxiliar = aux->proximo;
+        aux->proximo->anterior = NULL;
+        cabeca->primeiro = aux->proximo;
+        free(aux);
+        return auxiliar;
+    }
+    else
+    {
+        auxiliar = aux->anterior;
+        aux->anterior->proximo = aux->proximo;
+        aux->proximo->anterior = aux->anterior ;
+        free(aux);
+        aux = auxiliar;
+        return aux;
+    }
+}
+
+void arruma_arquivo(gancho *cabeca)
+{
+    no *aux = final(cabeca);
+    no *auxiliar = NULL;
+    while (aux != NULL)
+    {
+        aux = so_espaco(aux, cabeca); 
+        if (aux->linha[0] == ' ')
+        {
+            remove_espaco(aux);
+        }
+        if (aux->linha[0] == '\n' || aux->linha[0] == '#')
+        {
+            aux = remove_item(aux, cabeca);
+        }
+        else
+        {
+            tem_hashtag(aux);
+            aux = aux->anterior;
         }
     }
 }
 
-int verifica_func(char *nome_func)
+int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log)
 {
-    int i = 0;
-    char funcao[20];
-    for (i=0; nome_func[i] != ' '; i++);
-        strncpy(funcao, nome_func, i);
-    funcao[i] = '\0';
-    
-    while(1)
+    no *aux = final(cabeca);
+    int numero_func;
+    int erro;
+    while (aux != NULL)
     {
-        if (strcmp(funcao, "read")==0)
-        { 
-            return 0; 
-        }
-        if (strcmp(funcao, "storeconst")==0)
+        numero_func = retorna_nome(aux);
+        if (numero_func == 1)
         {
-            return 0;
-        }
-        if (strcmp(funcao, "add")==0)
-        {
-            return 0;
-        }
-        if (strcmp(funcao, "store")==0)
-        {
-            return 0;
-        }
-        if(strcmp(funcao, "sub")==0)
-        {
-            return 0;
-        }
-        if(strcmp(funcao, "write")==0)
-        {
-            return 0;
-        }
-        if(strcmp(funcao, "jump")==0)
-        {
-            return 0;   
-        }
-        for (i=0; nome_func[i] != '\0'; i++)
-        {
-            if (isdigit(nome_func[i]))
-            {
+            erro = um_paramentro(aux, arquivo, erro_log);
+            if (erro == -1)
                 return -1;
+        }
+
+        if (numero_func == 2)
+        {
+            erro = dois_paramentros(aux, arquivo, erro_log);
+            if (erro == -1)
+                return -1;
+        }
+
+        if (numero_func == 3)  
+        {
+            erro = storeconst(aux, arquivo, erro_log);
+            if (erro == -1)
+                return -1;
+        }
+
+        if (numero_func == 4)
+        {
+            erro = jump(aux, arquivo, erro_log, cabeca);
+            if (erro == -1)
+                return -1;
+        }
+        aux = aux->anterior;
+    }
+    fprintf(erro_log, "Nenhum erro para ser mostrado no momento.\n");
+}
+
+int um_paramentro(no *aux, FILE *arquivo, FILE *erro_log)
+{
+    int i=0, j=0, cont_parametro=0, espaco=0;
+    char *funcao = nome_func(aux);
+    for (i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] == ' ')
+        {
+            if ((espaco = args_espaco(aux, i)) == 0)
+            {
+                for (j = i+1; aux->linha[j] != ' '; j++)
+                {
+                    if (!isdigit(aux->linha[j]))
+                    {
+                        if(aux->linha[j] == '\n')
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            printf("Um erro ocorreu, olhe o painel de log para mais informacoes.\n");
+                            fprintf(erro_log, "Erro coluna %d: A funcao '%s' so aceita numeros inteiros em seus parametros.", aux->coluna, funcao);
+                            return -1;
+                        }
+                    }
+                }
+                cont_parametro++;
+                i = j;
             }
         }
+    } 
+    if (cont_parametro < 1)
+    {
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao '%s' precisa de pelo menos um parametro, mas foram inseridos '%d'.", aux->coluna, funcao, cont_parametro);
+        return -1;
+    }
+    if (cont_parametro > 1)
+    {
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao '%s' precisa de apenas um parametro, mas foram inseridos '%d'.", aux->coluna, funcao, cont_parametro);
         return -1;
     }
 }
 
+int dois_paramentros(no *aux, FILE *arquivo, FILE *erro_log)
+{
+    int i=0, j=0, cont_parametro=0, espaco=0;
+    char *funcao = nome_func(aux);
+    for (i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] == ' ')
+        {
+            if ((espaco = args_espaco(aux, i)) == 0)
+            {
+                for (j = i+1; aux->linha[j] != '\0'; j++)
+                {
+                    if (aux->linha[j] != ' ')
+                    {
+                        if (isdigit(aux->linha[j+1]))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            if (!isdigit(aux->linha[j]))
+                            {
+                                if(aux->linha[j] == '\n')
+                                {
+                                    i = j;
+                                    break;
+                                }
+                                else
+                                {
+                                    printf("Um erro ocorreu, olhe o painel de log para mais informacoes.\n");
+                                    fprintf(erro_log, "Erro coluna %d: A funcao '%s' so aceita numeros inteiros em seus parametros.", aux->coluna, funcao);
+                                    return -1;
+                                }
+                            }
+                            cont_parametro++;
+                        }
+                    }
+                }
+            }
+        }
+    } 
+    if (cont_parametro < 2)
+    {
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao '%s' precisa de pelo menos dois parametros, mas foram inseridos '%d'.", aux->coluna, funcao, cont_parametro);
+        return -1;
+    }
+    if (cont_parametro > 2)
+    {
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao '%s' precisa de apenas dois parametros, mas foram inseridos '%d'.", aux->coluna, funcao, cont_parametro);
+        return -1;
+    }
+}
+
+int storeconst(no *aux, FILE *arquivo, FILE *erro_log)
+{
+    int i=0, j=0, cont_parametro=0, espaco=0, cont_arg_float = 0;
+    char *funcao = nome_func(aux);
+    for (i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] == ' ')
+        {
+            if (cont_arg_float == 0)
+            {
+                if ((espaco = args_espaco(aux, i)) == 0)
+                {
+                    for (j = i+1; aux->linha[j] != '\0'; j++)
+                    {
+                        if (aux->linha[j] != ' ')
+                        {
+                            if (isdigit(aux->linha[j+2]))
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                if (!isdigit(aux->linha[j]))
+                                {
+                                    if(aux->linha[j] == '\n')
+                                    {
+                                        i = j;
+                                        break;
+                                    }
+                                    if (aux->linha[j] == '-')
+                                    {
+                                        continue;
+                                    }
+                                    if (aux->linha[j] == '.')
+                                    {
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        printf("Um erro ocorreu, olhe o painel de log para mais informacoes.\n");
+                                        fprintf(erro_log, "Erro coluna %d: A funcao '%s' so aceita numeros inteiros em seus parametros.", aux->coluna, funcao);
+                                        return -1;
+                                    }
+                                }
+                                cont_parametro++;
+                            }
+                        }
+                    }
+                }
+            }
+            if (cont_arg_float > 0)
+            {
+                if ((espaco = args_espaco(aux, i)) == 0)
+                {
+                    for (j = i+1; aux->linha[j] != '\0'; j++)
+                    {
+                        if (aux->linha[j] != ' ')
+                        {
+                            if (isdigit(aux->linha[j+1]))
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                if (!isdigit(aux->linha[j]))
+                                {
+                                    if(aux->linha[j] == '\n')
+                                    {
+                                        i = j;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        printf("Um erro ocorreu, olhe o painel de log para mais informacoes.\n");
+                                        fprintf(erro_log, "Erro coluna %d: A funcao '%s' so aceita numeros inteiros em seus parametros.", aux->coluna, funcao);
+                                        return -1;
+                                    }
+                                }
+                                cont_parametro++;
+                            }
+                        }
+                    }
+                }
+            }
+            cont_arg_float++;
+        }
+    } 
+    if (cont_parametro < 2)
+    {
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao '%s' precisa de pelo menos dois parametros, mas foram inseridos '%d'.", aux->coluna, funcao, cont_parametro);
+        return -1;
+    }
+    if (cont_parametro > 2)
+    {
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao '%s' precisa de apenas dois parametros, mas foram inseridos '%d'.", aux->coluna, funcao, cont_parametro);
+        return -1;
+    }
+}
+
+int args_espaco(no *aux, int n)
+{
+    for(int i=n; aux->linha[i] != '\0' ; i++)
+    {
+        if (!isdigit(aux->linha[i]))
+        {
+            if (aux->linha[i] == ' ')
+            {
+                continue;
+            }
+            else if (aux->linha[i] != '\n')
+            {
+                return 0;
+            }
+        }
+        if (isdigit(aux->linha[i]))
+        {
+            return 0;
+        }
+    }
+    return -1;
+
+}
+
+void tem_hashtag(no *aux)
+{
+    for (int i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] == '#')
+        {
+            if (aux->linha[i-1] == ' ')
+            {
+                aux->linha[i] = '\0';
+                aux->linha[i - 1] = '\n'; 
+                i -= 1;
+            } 
+            else
+            {
+                aux->linha[i] = '\n';
+                aux->linha[i + 1] = '\0';
+            }
+        } 
+    }
+}
+
+no *so_espaco(no *atual, gancho *cabeca)
+{
+    no *aux = NULL;
+    for(int i=0; atual->linha[i] != '\0' ; i++)
+    {
+        if (!isdigit(atual->linha[i]))
+        {
+            if (atual->linha[i] == ' ')
+            {
+                continue;
+            }
+            else if (atual->linha[i] != '\n')
+            {
+                return atual;
+            }
+        }
+        if (isdigit(atual->linha[i]))
+        {
+            return atual;
+        }
+    }
+    atual = remove_item(atual, cabeca);
+    return atual;
+}
+
+char *nome_func(no *aux)
+{
+    int i=0;
+    char *funcao;
+    for (i=0; aux->linha[i] != ' '; i++);
+    strncpy(funcao, aux->linha, i);
+    funcao[i] = '\0';
+    
+    if (strcmp(funcao, "read")==0)
+    { 
+        return funcao; 
+    }
+    if (strcmp(funcao, "storeconst")==0)
+    {
+        return funcao;
+    }
+    if (strcmp(funcao, "add")==0)
+    {
+        return funcao;
+    }
+    if (strcmp(funcao, "store")==0)
+    {
+        return funcao;
+    }
+    if(strcmp(funcao, "sub")==0)
+    {
+        return funcao;
+    }
+    if(strcmp(funcao, "write")==0)
+    {
+        return funcao;
+    }
+    if(strcmp(funcao, "jump")==0)
+    {
+        return funcao;   
+    }
+    if(strcmp(funcao, "div")==0)
+    {
+        return funcao;   
+    }
+}
+
+void remove_espaco(no *aux)
+{
+    char str[50];
+    int inicio = 0;
+    int j=0;
+    int tamanho;
+    for (int i=0; aux->linha[i] != '\0'; i++)
+    {
+        if (aux->linha[i] != ' ')
+        {
+            inicio = i;
+            break;
+        }
+    }
+    for (int i = inicio; aux->linha[i] != '\0'; i++)
+    {
+        str[j] = aux->linha[i];
+        j++;   
+    }
+    str[j] = '\0';
+    strcpy(aux->linha, str);
+    return;
+}
+
+void deleta_lista(gancho *cabeca)
+{
+    no *aux = NULL;
+    no *atual = cabeca->primeiro;
+
+    while (atual != NULL)
+    {
+        aux = atual->proximo;
+        free(atual);
+        atual = aux;
+    }
+    cabeca->primeiro = NULL;
+}
+
+int retorna_nome(no *aux)
+{
+    int i=0;
+    char funcao[20];
+    for (i=0; aux->linha[i] != ' '; i++);
+    strncpy(funcao, aux->linha, i);
+    funcao[i] = '\0';
+    
+    if (strcmp(funcao, "read")==0)
+    { 
+        return 1; 
+    }
+    if (strcmp(funcao, "storeconst")==0)
+    {
+        return 3;
+    }
+    if (strcmp(funcao, "add")==0)
+    {
+        return 2;
+    }
+    if (strcmp(funcao, "store")==0)
+    {
+        return 1;
+    }
+    if(strcmp(funcao, "sub")==0)
+    {
+        return 2;
+    }
+    if(strcmp(funcao, "write")==0)
+    {
+        return 1;
+    }
+    if(strcmp(funcao, "jump")==0)
+    {
+        return 4;   
+    }
+    if(strcmp(funcao, "div")==0)
+    {
+        return 2;   
+    }
+    return 0;
+}
+
 void remove_enter(char *str)
 {
-    int tamanho = strlen(str);
     for (int i=0; str[i] != '\0'; i++)
     {
         if (str[i] == '\n')
@@ -124,379 +582,193 @@ void remove_enter(char *str)
     }
 }
 
-int verifica_args(char *nome_func, int linha)
+int verifica_nomes(gancho *cabeca, FILE *erro_log)
 {
-    fflush(stdin);
-    remove_enter(nome_func);
-    int i;
-    int j=0;
+    int i=0, erro = 0, coluna = 1;
+    no *aux = final(cabeca);
     char funcao[20];
-    for (i=0; nome_func[i] != ' '; i++);
-    strncpy(funcao, nome_func, i);
-    funcao[i] = '\0';
+    while(aux != NULL)
+    {
+        for (i=0; aux->linha[i] != ' '; i++);
+        strncpy(funcao, aux->linha, i);
+        funcao[i] = '\0';
+        if ((erro = retorna_nome(aux)) == 0)
+        {
+            remove_enter(funcao);
+            printf("Erro, abra o arquivo log para verificar.\n");
+            fprintf(erro_log, "'%s' nao e reconhecido como um comando interno na linha '%d'.\n", funcao, aux->coluna);
+            return -1; 
+        }
+        else
+        {
+            aux = aux->anterior; 
+        }
+        coluna++;
+    }    
+}
 
-    if (strcmp(funcao, "read")==0)
+int jump(no *aux, FILE *arquivo, FILE *erro_log, gancho *cabeca)
+{
+    int i=0, j=0, cont_parametro=0, espaco=0, jump_pula = 0, cont_arg_float = 0, z = 0, erro = 0;
+    for (i=0; aux->linha[i] != '\0'; i++)
     {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
+        if (aux->linha[i] == ' ')
         {
-            if (nome_func[i] == ' ')
+           if (cont_arg_float == 0)
             {
-                for (j=i+1; nome_func[j] != ' '; j++)
+                if ((espaco = args_espaco(aux, i)) == 0)
                 {
-                    if (nome_func[j] == '\0')
+                    for (j = i+1; aux->linha[j] != '\0'; j++)
                     {
-                        break;
-                    }
-                    if (!isdigit(nome_func[j]))
-                    {
-                        erro = nome_func[j];
-                        printf("A funcao '%s' recebeu um '%c' na coluna '%d' e na linha '%d'. A funcao precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j, linha);
-                        return -1;
-                    }
-                }    
-                cont++;            
-                cont_espaco++;
-            }
-        }
-        if (cont > 1)
-        {
-            printf("A funcao %s precisa de apenas um argumento, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }
-        else if (cont < 1)
-        {
-            printf("A funcao %s precisa de apenas um argumento, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }
-        else if (cont == 1)
-        {
-            return 0;
-        }
-    }
-    if (strcmp(funcao, "storeconst")==0)
-    {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int pontos=0;
-        int negativo = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
-        {
-            if (cont_espaco > 2)
-            {
-                break;
-            }
-            if (nome_func[i] == ' ')
-            {
-                if (cont_erro <= 0)
-                {
-                    for (j=i+1; nome_func[j] != ' '; j++)
-                    {
-                        if (nome_func[j] == '\0')
+                        if (aux->linha[j] != ' ')
                         {
-                            break;
-                        }
-                        if (!isdigit(nome_func[j]))
-                        {
-                            if (nome_func[j] == '-')
+                            if (cont_arg_float == 0)
                             {
-                                if (isdigit(nome_func[j+1]))
+                                if (isdigit(aux->linha[j+1]))
                                 {
-                                    negativo++;
                                     continue;
                                 }
+                                else
+                                {
+                                    if (!isdigit(aux->linha[j]))
+                                    {
+                                        if(aux->linha[j] == '\n')
+                                        {
+                                            i = j;
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            printf("Um erro ocorreu, olhe o painel de log para mais informacoes.\n");
+                                            fprintf(erro_log, "Erro coluna %d: A funcao 'jump' so aceita numeros inteiros em seus parametros.", aux->coluna);
+                                            return -1;
+                                        }
+                                    }
+                                    cont_parametro++;
+                                    cont_arg_float++;
+                                }
                             }
-                            if (negativo > 1)
+                            else
                             {
-                                printf("A funcao %s aceita apenas um numero negativo.\n");
-                                return -1;
+                                if (cont_arg_float == 1)
+                                {
+                                    if ((espaco = args_espaco(aux, i)) == 0)
+                                    {
+                                        z = j;
+                                        for (j = z; aux->linha[j] != '\0'; j++)
+                                        {
+                                            if (aux->linha[j] != ' ')
+                                            {
+                                                if (isdigit(aux->linha[j+1]))
+                                                {
+                                                    jump_pula = pega_int(aux, j);
+                                                    cont_arg_float++;
+                                                    cont_parametro++;
+                                                    break;
+                                                }
+                                                else
+                                                {
+                                                    if (!isdigit(aux->linha[j]))
+                                                    {
+                                                        if(aux->linha[j] == '\n')
+                                                        {
+                                                            i = j;
+                                                            break;
+                                                        }
+                                                        else
+                                                        {
+                                                            printf("Um erro ocorreu, olhe o painel de log para mais informacoes.\n");
+                                                            fprintf(erro_log, "Erro coluna %d: A funcao 'jump' so aceita numeros inteiros em seus parametros.", aux->coluna);
+                                                            return -1;
+                                                        }
+                                                    }
+                                                    jump_pula = aux->linha[j] - '0';
+                                                    cont_parametro++;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            else if (nome_func[j] != '.')
-                            {
-                                erro = nome_func[j];
-                                printf("A funcao %s precisa de um numero float de inicio, apenas pontos sao permitidos entre os numeros, porem na coluna '%d' e linha '%d' a funcao recebeu um %c", funcao, j, linha, erro);
-                                return 2;
-                            }
-                            pontos++;
                         }
                     }
-                    if (pontos > 1)
-                    {
-                        printf("A funcao '%s' aceita apenas um ponto entre numeros, mas recebeu '%d' na coluna '%d' e na linha '%d'.\n", funcao,pontos, j, linha);
-                        return 2;
-                    }
-                    cont++;               
-                    cont_espaco++;
                 }
-                if (cont_erro >= 1)
-                {
-                    for (j=i+1; nome_func[j] != ' '; j++)
-                    {
-                        if (nome_func[j] == '\0')
-                        {
-                            break;
-                        }
-                        if (!isdigit(nome_func[j]))
-                        {
-                            erro = nome_func[j];
-                            printf("A funcao '%s' recebeu um '%c' na coluna '%d'e na linha '%d'. A funcao como segundo parametro precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j, linha);
-                            return -1;
-                        }
-                    } 
-                    cont++;   
-                }
-                cont_erro++;
-            }   
+            }
         }
-        if (cont > 2)
-        {
-            printf("A funcao '%s' so pode receber dois paramentros, mas recebeu %d na linha '%d'\nVerifique e tente novamente.\n", funcao, cont, linha);
-            return 2;
-        }
-        if (cont < 2)
-        {
-            printf("A funcao '%s' precisa receber dois paramentros, mas recebeu apenas %d na linha '%d'\nVerifique e tente novamente.\n", funcao, cont, linha);
-            return 2;
-        }
-        else if (cont == 2)
-        {
-            return 0;
-        }
-       
-    }
-    if (strcmp(funcao, "jump")==0)
+    } 
+    if (cont_parametro < 2)
     {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
-        {
-            
-            if (cont_espaco > 2)
-            {
-                break;
-            }
-            if (nome_func[i] == ' ')
-            {
-                for (j=i+1; nome_func[j] != ' '; j++)
-                {
-                    if (nome_func[j] == '\0')
-                    {
-                        break;
-                    }
-                    if (!isdigit(nome_func[j]))
-                    {
-                        erro = nome_func[j];
-                        printf("A funcao '%s' recebeu um '%c' na coluna '%d' e na linha '%d'. A funcao precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j, linha);
-                        return -1;
-                    }
-                }    
-                cont++;      
-                cont_espaco++;      
-            }
-        }
-        if (cont > 2)
-        {
-            printf("A funcao '%s' precisa de apenas um argumento, mas recebeu %d na linha '%d'.\n", funcao, cont, linha); 
-            return 2;
-        }
-        if (cont < 2)
-        {
-            printf("A funcao '%s' precisa de 2 argumentos, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }    
-        else if (cont == 2)
-        {
-            return 0;
-        }
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao 'jump' precisa de pelo menos dois parametros, mas foram inseridos '%d'.", aux->coluna, cont_parametro);
+        return -1;
     }
-    if (strcmp(funcao, "add")==0)
+    if (cont_parametro > 2)
     {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
-        {
-            if (cont_espaco > 2)
-            {
-                break;
-            }
-            if (nome_func[i] == ' ')
-            {
-                for (j=i+1; nome_func[j] != ' '; j++)
-                {
-                    if (nome_func[j] == '\0')
-                    {
-                        break;
-                    }
-                    if (!isdigit(nome_func[j]))
-                    {
-                        erro = nome_func[j];
-                        printf("A funcao '%s' recebeu um '%c' na coluna '%d' e na linha '%d'. A funcao precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j, linha);
-                        return -1;
-                    }
-                }    
-                cont++;   
-                cont_espaco++;         
-            }
-        }
-        if (cont > 2)
-        {
-            printf("A funcao '%s' precisa de apenas um argumento, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }
-        if (cont < 2)
-        {
-            printf("A funcao '%s' precisa de 2 argumentos, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }
-        else if (cont == 2)
-        {
-            return 0;
-        }    
+        printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
+        fprintf(erro_log, "Erro coluna %d: A funcao 'jump' precisa de apenas dois parametros, mas foram inseridos '%d'.", aux->coluna, cont_parametro);
+        return -1;
     }
-    if (strcmp(funcao, "sub")==0)
+    erro = confere_jump(cabeca, jump_pula, erro_log, aux->coluna);
+    if (erro == -1)
+        return -1;
+}
+
+int pega_int(no *aux, int j)
+{
+    char str_to_n[BUFFER];
+    int z = 0;
+    int numero;
+    for (int i = j; aux->linha[i] != ' '; i++)
     {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
-        {
-            if (cont_espaco > 2)
-            {
-                break;
-            }
-            if (nome_func[i] == ' ')
-            {
-                for (j=i+1; nome_func[j] != ' '; j++)
-                {
-                    if (nome_func[j] == '\0')
-                    {
-                        break;
-                    }
-                    if (!isdigit(nome_func[j]))
-                    {
-                        erro = nome_func[j];
-                        printf("A funcao '%s' recebeu um '%c' na coluna '%d' e na linha '%d'. A funcao precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j, linha);
-                        return -1;
-                    }
-                }    
-                cont++;    
-                cont_espaco++;       
-            }
-        }
-        if (cont > 2)
-        {
-            printf("A funcao '%s' precisa de apenas um argumento, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }
-        if (cont < 2)
-        {
-            printf("A funcao '%s' precisa de 2 argumentos, mas recebeu %d na linha '%d'.\n", funcao, cont, linha);
-            return 2;
-        }    
-        else if (cont == 2)
-        {
-            return 0;
-        }
+        str_to_n[z] = aux->linha[i];
+        z++;
     }
-    if (strcmp(funcao, "store")==0)
+    numero = strtol(str_to_n, NULL, 10);
+    return numero;
+
+}
+
+int confere_jump(gancho *cabeca, int jump_pula, FILE *erro_log, int col)
+{
+    no *atual = final(cabeca);
+    int maior = -999;
+    int resultado = 0;
+    while (atual !=  NULL)
     {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
+        if (atual->coluna > maior)
         {
-            if (cont_espaco > 1)
-            {
-                break;
-            }
-            if (nome_func[i] == ' ')
-            {
-                for (j=i+1; nome_func[j] != ' '; j++)
-                {
-                    if (nome_func[j] == '\0')
-                    {
-                        break;
-                    }
-                    if (!isdigit(nome_func[j]))
-                    {
-                        erro = nome_func[j];
-                        printf("A funcao '%s' recebeu um '%c' na coluna '%d'. A funcao precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j);
-                        return -1;
-                    }
-                }    
-                cont++;   
-                cont_espaco++;         
-            }
+            maior = atual->coluna;
         }
-        if (cont > 1)
-        {
-            printf("A funcao %s precisa de apenas um argumento, mas recebeu %d.\n", funcao, cont);
-            return 2;
-        }
-        if (cont < 1)
-        {
-            printf("A funcao %s precisa de apenas um argumento, mas recebeu %d.\n", funcao, cont);
-            return 2;
-        }
-        else if (cont == 1)
-        {
-            return 0;
-        }
+        atual = atual->anterior;
     }
-    if (strcmp(funcao, "write")==0)
+
+    if (jump_pula < 0)
     {
-        int cont=0;
-        char erro;
-        int cont_erro = 0;
-        int cont_espaco = 0;
-        for (i=0; nome_func[i] != '\0'; i++)
+       resultado = col - jump_pula;
+       if (resultado < 0)
+       {
+            printf("Ocorreu um erro, abra o arquivo de log para mais informacoes.\n");
+            fprintf(erro_log, "Erro coluna %d: a funcao 'jump' nao pode voltar uma quantidade de colunas menor do que suas colunas.", col);
+            return -1;
+       }
+       else
+       {
+            return 0;
+       }
+    }
+    if (jump_pula > 0)
+    {
+        resultado = col + jump_pula;
+        if (resultado > maior)
         {
-            if (cont_espaco > 1)
-            {
-                break;
-            }
-            if (nome_func[i] == ' ')
-            {
-                for (j=i+1; nome_func[j] != ' '; j++)
-                {
-                    if (nome_func[j] == '\0')
-                    {
-                        break;
-                    }
-                    if (!isdigit(nome_func[j]))
-                    {
-                        erro = nome_func[j];
-                        printf("A funcao '%s' recebeu um '%c' na coluna '%d'. A funcao precisa receber um numero inteiro para funcionar, verifique e tente novamente.\n", funcao, erro, j);
-                        return -1;
-                    }
-                }    
-                cont++;            
-            }
-        }
-        if (cont > 1)
-        {
-            printf("A funcao %s precisa de apenas um argumento, mas recebeu %d.\n", funcao, cont);
-            return 2;
-        }
-        if (cont < 1)
-        {
-            printf("A funcao %s precisa de apenas um argumento, mas recebeu %d.\n", funcao, cont);
-            return 2;
-        }
-        else if (cont == 1)
+            printf("Ocorreu um erro, abra o arquivo de log para mais informacoes.\n");
+            fprintf(erro_log, "Erro coluna %d: a funcao 'jump' nao pode avancar uma quantidade de colunas maior do que suas colunas.", col);
+            return -1;
+        } 
+        else
         {
             return 0;
         }
     }
+
 }
