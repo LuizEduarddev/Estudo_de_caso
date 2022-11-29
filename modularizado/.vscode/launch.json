@@ -5,7 +5,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
-            "args": [],
+            "args": ["arquivo_arg_1.txt", "erros_2.log"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

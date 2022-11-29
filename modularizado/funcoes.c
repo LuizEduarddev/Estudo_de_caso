@@ -8,8 +8,11 @@
 
 struct no
 {
-    int coluna;
     char linha[BUFFER];   
+    int coluna;
+    int qntd_parametro;
+    char parametro_1[BUFFER];
+    char parametro_2[BUFFER];
     no *proximo;
     no *anterior;
 };
@@ -40,6 +43,15 @@ void inserir_lista(gancho *cabeca, char *str, int col)
     cabeca->primeiro = novo;
 }
 
+void inserir_parametro(no *aux, char *str, int cont)
+{
+    if (cont == 1)
+        strcpy(aux->parametro_1, str);
+    else
+        strcpy(aux->parametro_2, str);
+    aux->qntd_parametro = cont;        
+}
+
 no *final(gancho *cabeca)
 {
     no *atual = cabeca->primeiro;
@@ -58,11 +70,11 @@ int eh_nulo(FILE *arquivo, FILE *erro_log)
     {
         if (arquivo == NULL)
         {
-            printf("Houve um erro ao abrir o arquivo principal.\n");
+            printf("Houve um erro ao abrir o arquivo de codigos.\n");
         }
         if (erro_log == NULL)
         {
-            printf("Houve um erro ao abrir o arquivo de erro.\n");
+            printf("Houve um erro ao abrir o arquivo de log.\n");
         }
     }
     else
@@ -114,7 +126,7 @@ no *remove_item(no *aux, gancho *cabeca)
     }
 }
 
-void arruma_arquivo(gancho *cabeca)
+void arruma_arquivo(gancho *cabeca, FILE *erro_log)
 {
     no *aux = final(cabeca);
     no *auxiliar = NULL;
@@ -132,10 +144,48 @@ void arruma_arquivo(gancho *cabeca)
         else
         {
             tem_hashtag(aux);
+            pega_parametro(aux, erro_log);
             aux = aux->anterior;
         }
     }
+
 }
+
+int tira_nome(no *aux)
+{
+    int i = 0, inicio = 0, fim = 0;
+    char nome[BUFFER];
+    while (aux->linha[i] != ' ')
+        i++;
+
+    return i;    
+}
+
+int pega_parametro(no *aux, FILE *erro_log)
+{   
+    char parametro[BUFFER];
+    int i = 0, fim = 0, inicio = 0, tamanho = 0, cont = 1;
+    i = tira_nome(aux);
+    while (aux->linha[i] != '\0')
+    {
+        while(aux->linha[i] == ' ')
+            i++;  
+        
+        inicio = i;
+
+        while(aux->linha[i] != ' ' && aux->linha[i] != '\0' && aux->linha[i] != '\n')
+            i++;
+  
+        fim = i;
+
+        strncpy(parametro, aux->linha + inicio, fim - inicio);
+        parametro[fim - inicio] = '\0';
+        inserir_parametro(aux, parametro, cont);
+
+        cont++;
+    }
+}
+
 
 int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log)
 {
@@ -758,6 +808,5 @@ int confere_jump(gancho *cabeca, int jump_pula, FILE *erro_log, int col)
     {
         return 0;
     }
-    
 
 }

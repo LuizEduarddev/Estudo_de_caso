@@ -1,0 +1,1 @@
+Parei terminando de arrumar a funcao de pegar os parametros.
