@@ -1,4 +1,4 @@
-      read  0     # este é um comentário
+      read  0    2 # este é um comentário
 read 1
 read  2
  storeconst 1.2                     3  # este é um comentário
