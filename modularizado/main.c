@@ -28,5 +28,6 @@ int main(int argc, char *argv[])
     if ((erro = verifica_args(cabeca, arquivo, erro_log) == -1))
         return -1;
 
+    deleta_lista(cabeca);
     return 0;   
 }

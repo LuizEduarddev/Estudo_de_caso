@@ -7,8 +7,8 @@ jump 2 3
 # comentário nesta linha
 add 0  1 
 store 4
-jump 3                     10
-jump 3 12 # comentário nesta linha
+jump 3                     3
+jump 3 2 # comentário nesta linha
     jump 3 2   # comentário
  sub  0  1 
 store 4
