@@ -25,8 +25,6 @@ void tem_hashtag(no *aux);
 int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log);
 no *final(gancho *cabeca);
 char *nome_func(no *aux);
-int args_espaco(no *aux, int n);
-int pega_int(no *aux);
 int confere_jump(int col, FILE *arquivo, FILE *erro_log, int jump_pula, int maior);
 int pega_parametro(no *aux, FILE *erro_log);
 int tira_nome(no *aux);
