@@ -198,6 +198,8 @@ int pega_parametro(no *aux, FILE *erro_log)
 int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log)
 {
     no *aux = final(cabeca);
+    int *vetor = (int *)(malloc(BUFFER * sizeof(int)));
+    int *store = (int *)(malloc(sizeof(int)));
     int numero_func;
     int erro;
     char *funcao;
@@ -207,21 +209,21 @@ int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log)
         numero_func = retorna_nome(funcao);
         if (numero_func == 1)
         {
-            erro = um_paramentro(aux, arquivo, erro_log);
+            erro = um_paramentro(aux, arquivo, erro_log, vetor, store);
             if (erro == -1)
                 return -1;
         }
 
         if (numero_func == 2)
         {
-            erro = dois_parametros(aux, arquivo, erro_log);
+            erro = dois_parametros(aux, arquivo, erro_log, vetor, store);
             if (erro == -1)
                 return -1;
         }
 
         if (numero_func == 3)  
         {
-            erro = storeconst(aux, arquivo, erro_log);
+            erro = storeconst(aux, arquivo, erro_log, vetor, store);
             if (erro == -1)
                 return -1;
         }
@@ -237,7 +239,7 @@ int verifica_args(gancho *cabeca, FILE *arquivo, FILE *erro_log)
     fprintf(erro_log, "Nenhum erro para ser mostrado no momento.\n");
 }
 
-int um_paramentro(no *aux, FILE *arquivo, FILE *erro_log)
+int um_paramentro(no *aux, FILE *arquivo, FILE *erro_log, int *vetor, int *store)
 {
     int tipo = 0;
     char *funcao = nome_func(aux);
@@ -249,16 +251,17 @@ int um_paramentro(no *aux, FILE *arquivo, FILE *erro_log)
         fprintf(erro_log, "ERRO linha %d: A funcao '%s' precisa de apenas 1 parametro mas recebeu %d.", aux->coluna, nome, aux->qntd_parametro);
         return -1;
     }
-
     if (tipo = n_tipo(aux->parametro_1) != POSITIVO)
     {
         printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
         fprintf(erro_log, "ERRO linha %d: a funcao '%s' aceita apenas numeros naturais positivos. Recebido %s", aux->coluna, nome, aux->parametro_1);
         return -1;
     }
+    realiza_func(aux, nome, vetor, store);
+    return 0;
 }
 
-int dois_parametros(no *aux, FILE *arquivo, FILE *erro_log)
+int dois_parametros(no *aux, FILE *arquivo, FILE *erro_log, int *vetor, int *store)
 {
     int tipo = 0;
     char *funcao = nome_func(aux);
@@ -277,10 +280,11 @@ int dois_parametros(no *aux, FILE *arquivo, FILE *erro_log)
         printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
         return -1;
     }
-
+    realiza_func(aux, nome, vetor, store);
+    return 0;
 }
 
-int storeconst(no *aux, FILE *arquivo, FILE *erro_log)
+int storeconst(no *aux, FILE *arquivo, FILE *erro_log, int *vetor, int *store)
 {
     int tipo = 0;
     char *funcao = nome_func(aux);
@@ -319,7 +323,8 @@ int storeconst(no *aux, FILE *arquivo, FILE *erro_log)
         printf("Um erro ocorreu, olhe o painel de logs para mais informacoes.\n");
         return -1;
     }
-
+    realiza_func(aux, nome, vetor, store);
+    return 0;
 }
 
 void tem_hashtag(no *aux)
@@ -411,6 +416,10 @@ char *nome_func(no *aux)
     {
         return funcao;   
     }
+    if(strcmp(funcao, "mult")==0)
+    {
+        return funcao;   
+    }
 }
 
 void remove_espaco(no *aux)
@@ -482,6 +491,10 @@ int retorna_nome(char *funcao)
         return 4;   
     }
     if(strcmp(funcao, "div")==0)
+    {
+        return 2;   
+    }
+    if(strcmp(funcao, "mult")==0)
     {
         return 2;   
     }
@@ -612,4 +625,125 @@ int para_jump(char *str)
     char *final;
     int numero_int = strtol(str, &final, 10);
     return numero_int;
+}
+
+void realiza_func(no *aux, char *nome, int *vetor, int *store)
+{
+    if (strcmp(nome, "read") == 0)
+        funcao_read(aux, vetor);
+    if (strcmp(nome, "storeconst") == 0)
+        funcao_storeconst(aux, vetor);
+    if (strcmp(nome, "add") == 0)
+        *(store) = funcao_add(aux, vetor);
+    if (strcmp(nome, "sub") == 0)
+        *(store) = funcao_sub(aux, vetor);
+    if (strcmp(nome, "mult") == 0)
+        *(store) = funcao_mult(aux, vetor);    
+    if (strcmp(nome, "store") == 0)
+        funcao_store(aux, vetor, store);
+    if (strcmp(nome, "div") == 0)
+        *(store) = funcao_div(aux, vetor);
+    if (strcmp(nome, "write") == 0)
+        funcao_write(aux, vetor);
+}
+
+void funcao_read(no *aux, int *vetor)
+{
+    int numero = para_jump(aux->parametro_1);
+    if (numero > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("Funcao READ inicializada.\n");
+    printf("Digite o numero que sera colocado na posicao %d da memoria: ", numero);
+    scanf("%d", vetor + numero);    
+
+    printf("Numero '%d' alocado no vetor.\n", *(vetor + numero));
+}
+
+void funcao_storeconst(no *aux, int *vetor)
+{
+    int numero = para_jump(aux->parametro_1);
+    int pos = para_jump(aux->parametro_2);
+
+    if (pos > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("funcao STORECONST inicializada.\n");
+    *(vetor + pos) = numero;
+    printf("O numero '%d' foi alocado na pos '%d'.\n", *(vetor + pos), pos);
+}
+
+int funcao_add(no *aux, int *vetor)
+{
+    int pos1 = para_jump(aux->parametro_1);
+    int pos2 = para_jump(aux->parametro_2);
+
+    if (pos1 > BUFFER || pos2 > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("funcao ADD inicializada.\n");
+    printf("Realizando a soma de %d com %d.\n", *(vetor + pos1), *(vetor + pos2));
+    printf("O resultado eh %d, ele foi pre-alocado, caso deseje adiciona-lo ao vetor, coloque o comando 'store'.\n", *(vetor + pos1) + *(vetor + pos2));
+    return *(vetor + pos1) + *(vetor + pos2);
+}
+
+int funcao_sub(no *aux, int *vetor)
+{
+    int pos1 = para_jump(aux->parametro_1);
+    int pos2 = para_jump(aux->parametro_2);
+
+    if (pos1 > BUFFER || pos2 > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("funcao SUB inicializada.\n");
+    printf("Realizando a subtracao de %d com %d.\n", *(vetor + pos1), *(vetor + pos2));
+    printf("O resultado eh %d, ele foi pre-alocado, caso deseje adiciona-lo ao vetor, coloque o comando 'store'.\n", *(vetor + pos1) - *(vetor + pos2));
+    return *(vetor + pos1) - *(vetor + pos2);
+}
+
+int funcao_div(no *aux, int *vetor)
+{
+    int pos1 = para_jump(aux->parametro_1);
+    int pos2 = para_jump(aux->parametro_2);
+
+    if (pos1 > BUFFER || pos2 > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("funcao DIV inicializada.\n");
+    printf("Realizando a divisao de %d com %d.\n", *(vetor + pos1), *(vetor + pos2));
+    printf("O resultado eh %d, ele foi pre-alocado, caso deseje adiciona-lo ao vetor, coloque o comando 'store'.\n", *(vetor + pos1) / *(vetor + pos2));
+    return *(vetor + pos1) / *(vetor + pos2);
+}
+
+int funcao_mult(no *aux, int *vetor)
+{
+    int pos1 = para_jump(aux->parametro_1);
+    int pos2 = para_jump(aux->parametro_2);
+
+    if (pos1 > BUFFER || pos2 > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("funcao MULT inicializada.\n");
+    printf("Realizando a multiplicacao de %d com %d.\n", *(vetor + pos1), *(vetor + pos2));
+    printf("O resultado eh %d, ele foi pre-alocado, caso deseje adiciona-lo ao vetor, coloque o comando 'store'.\n", *(vetor + pos1) * *(vetor + pos2));
+    return *(vetor + pos1) * *(vetor + pos2);
+}
+
+void funcao_store(no *aux, int *vetor, int *store)
+{
+    int pos = para_jump(aux->parametro_1);
+    if (pos > BUFFER)
+        printf("WARNING! O parametro e maior do que a quantidade alocada para o vetor, esta acao resultara em um comportamento indeterminado do sistema.\n");
+
+    printf("Funcao STORE inicializada.\n");    
+    *(vetor + pos) = *(store);
+    printf("O resultado %d deixou de ser pre alocado e foi alocado no vetor, na pos %d", *(vetor + pos), pos);
+}
+
+void funcao_write(no *aux, int *vetor)
+{
+    int pos = para_jump(aux->parametro_1);
+
+    printf("Funcao WRITE inicializada.\n");    
+    printf("O que esta na posicao %d eh '%d'.\n", pos, *(vetor + pos));
 }
